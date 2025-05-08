@@ -1,63 +1,57 @@
-import { goToPage, logout, user } from "../index.js";
 import { ADD_POSTS_PAGE, AUTH_PAGE, POSTS_PAGE } from "../routes.js";
+import { logout } from "../index.js";
 
-/**
- * Компонент заголовка страницы.
- * Этот компонент отображает шапку страницы с логотипом, кнопкой добавления постов/входа и кнопкой выхода (если пользователь авторизован).
- * 
- * @param {HTMLElement} params.element - HTML-элемент, в который будет рендериться заголовок.
- * @returns {HTMLElement} Возвращает элемент заголовка после рендеринга.
- */
-export function renderHeaderComponent({ element }) {
-  /**
-   * Рендерит содержимое заголовка.
-   */
-  element.innerHTML = `
-  <div class="page-header">
-      <h1 class="logo">instapro</h1>
-      <button class="header-button add-or-login-button">
-      ${
-        user
-          ? `<div title="Добавить пост" class="add-post-sign"></div>`
-          : "Войти"
-      }
-      </button>
-      ${
-        user
-          ? `<button title="${user.name}" class="header-button logout-button">Выйти</button>`
-          : ""
-      }  
-  </div>
-  `;
+let currentUser = null;
+let currentGoToPage = () => {};
 
-  /**
-   * Обработчик клика по кнопке "Добавить пост"/"Войти".
-   * Если пользователь авторизован, перенаправляет на страницу добавления постов.
-   * Если пользователь не авторизован, перенаправляет на страницу авторизации.
-   */
-  element
-    .querySelector(".add-or-login-button")
-    .addEventListener("click", () => {
-      if (user) {
-        goToPage(ADD_POSTS_PAGE);
-      } else {
-        goToPage(AUTH_PAGE);
-      }
+export function initHeader(user, goToPage) {
+  currentUser = user;
+  currentGoToPage = goToPage;
+}
+
+export function renderHeaderComponent(element) {
+  try {
+    // Проверяем и нормализуем element
+    const container =
+      typeof element === "string" ? document.querySelector(element) : element;
+
+    if (!(container instanceof HTMLElement)) {
+      console.error("Header: Invalid container", container);
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="page-header">
+        <h1 class="logo">instapro</h1>
+        <button class="header-button add-or-login-button">
+          ${
+            currentUser
+              ? `<div title="Добавить пост" class="add-post-sign"></div>`
+              : "Войти"
+          }
+        </button>
+        ${
+          currentUser
+            ? `<button title="${currentUser.name}" class="header-button logout-button">Выйти</button>`
+            : ""
+        }
+      </div>
+    `;
+
+    // Безопасные обработчики
+    const addListener = (selector, handler) => {
+      const el = container.querySelector(selector);
+      if (el) el.addEventListener("click", handler);
+    };
+
+    addListener(".logo", () => currentGoToPage(POSTS_PAGE));
+    addListener(".add-or-login-button", () => {
+      currentUser
+        ? currentGoToPage(ADD_POSTS_PAGE)
+        : currentGoToPage(AUTH_PAGE);
     });
-
-  /**
-   * Обработчик клика по логотипу.
-   * Перенаправляет на страницу с постами.
-   */
-  element.querySelector(".logo").addEventListener("click", () => {
-    goToPage(POSTS_PAGE);
-  });
-
-  /**
-   * Обработчик клика по кнопке "Выйти".
-   * Если кнопка существует (т.е. пользователь авторизован), вызывает функцию `logout`.
-   */
-  element.querySelector(".logout-button")?.addEventListener("click", logout);
-
-  return element;
+    addListener(".logout-button", logout);
+  } catch (error) {
+    console.error("Header render error:", error);
+  }
 }
